@@ -31,13 +31,14 @@ WINDOW_HEIGHT = GRID_SIZE * CELL_SIZE + GRID_OFFSET * 2
 class PygameUI:
     """Graphical user interface for Treasure Duel using Pygame."""
 
-    def __init__(self, grid_size=4, num_treasures=5, ai_depth=4):
+    def __init__(self, grid_size=4, num_treasures=5, ai_depth=4, game_mode='human_vs_ai'):
         """Initialize pygame and game state."""
         pygame.init()
 
         self.grid_size = grid_size
         self.num_treasures = num_treasures
         self.ai_depth = ai_depth
+        self.game_mode = game_mode  # 'human_vs_ai' or 'ai_vs_ai'
 
         # Setup display
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -165,7 +166,9 @@ class PygameUI:
         pygame.draw.circle(self.screen, BLUE,
                          (human_x + CELL_SIZE//2, human_y + CELL_SIZE//2),
                          CELL_SIZE//3)
-        text = self.font_medium.render("H", True, WHITE)
+        # Show "H" or "1" depending on game mode
+        player1_text = "1" if self.game_mode == 'ai_vs_ai' else "H"
+        text = self.font_medium.render(player1_text, True, WHITE)
         text_rect = text.get_rect(center=(human_x + CELL_SIZE//2, human_y + CELL_SIZE//2))
         self.screen.blit(text, text_rect)
 
@@ -173,7 +176,9 @@ class PygameUI:
         pygame.draw.circle(self.screen, PURPLE,
                          (ai_x + CELL_SIZE//2, ai_y + CELL_SIZE//2),
                          CELL_SIZE//3)
-        text = self.font_medium.render("A", True, WHITE)
+        # Show "A" or "2" depending on game mode
+        player2_text = "2" if self.game_mode == 'ai_vs_ai' else "A"
+        text = self.font_medium.render(player2_text, True, WHITE)
         text_rect = text.get_rect(center=(ai_x + CELL_SIZE//2, ai_y + CELL_SIZE//2))
         self.screen.blit(text, text_rect)
 
@@ -195,10 +200,15 @@ class PygameUI:
         subtitle_rect = subtitle.get_rect(center=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 - 80))
         self.screen.blit(subtitle, subtitle_rect)
 
+        if self.game_mode == 'ai_vs_ai':
+            mode_text = "AI (Blue) vs AI (Purple)"
+        else:
+            mode_text = "Human (Blue H) vs AI (Purple A)"
+
         instructions = [
             "Collect treasures to increase score",
             "Watch out for negative values!",
-            "Human (Blue H) vs AI (Purple A)",
+            mode_text,
             "",
             "Click anywhere to start!",
             "Press R to restart anytime"
@@ -225,10 +235,17 @@ class PygameUI:
 
         # Player labels section
         label_y = board_y + 25
-        human_label = self.font_medium.render("Human:", True, BLUE)
+
+        # Choose label based on game mode
+        if self.game_mode == 'ai_vs_ai':
+            human_label_text = "AI 1:"
+        else:
+            human_label_text = "Human:"
+
+        human_label = self.font_medium.render(human_label_text, True, BLUE)
         self.screen.blit(human_label, (board_x + 15, label_y))
 
-        # Human score - large display
+        # Human/AI1 score - large display
         human_score_text = self.font_xlarge.render(str(self.state.human_score), True, BLUE)
         human_score_rect = human_score_text.get_rect(center=(board_x + 75, label_y + 50))
         self.screen.blit(human_score_text, human_score_rect)
@@ -241,7 +258,12 @@ class PygameUI:
 
         # AI label and score
         ai_label_x = board_x + board_width - 110
-        ai_label = self.font_medium.render("AI:", True, PURPLE)
+        if self.game_mode == 'ai_vs_ai':
+            ai_label_text = "AI 2:"
+        else:
+            ai_label_text = "AI:"
+
+        ai_label = self.font_medium.render(ai_label_text, True, PURPLE)
         self.screen.blit(ai_label, (ai_label_x, label_y))
 
         ai_score_text = self.font_xlarge.render(str(self.state.ai_score), True, PURPLE)
@@ -252,18 +274,30 @@ class PygameUI:
         status_y = board_y + board_height + 25
         if self.game_state == "playing":
             if self.state.is_human_turn:
-                status_text = "Your Turn! Click a GREEN cell"
+                if self.game_mode == 'ai_vs_ai':
+                    status_text = "AI 1 Thinking..."
+                else:
+                    status_text = "Your Turn! Click a GREEN cell"
                 status_color = BLUE
             else:
-                status_text = "AI Thinking..."
+                if self.game_mode == 'ai_vs_ai':
+                    status_text = "AI 2 Thinking..."
+                else:
+                    status_text = "AI Thinking..."
                 status_color = PURPLE
         elif self.game_state == "game_over":
             winner = get_winner(self.state)
             if winner == "Human":
-                status_text = "YOU WIN!"
+                if self.game_mode == 'ai_vs_ai':
+                    status_text = "AI 1 WINS!"
+                else:
+                    status_text = "YOU WIN!"
                 status_color = GREEN
             elif winner == "AI":
-                status_text = "AI WINS!"
+                if self.game_mode == 'ai_vs_ai':
+                    status_text = "AI 2 WINS!"
+                else:
+                    status_text = "AI WINS!"
                 status_color = RED
             else:
                 status_text = "DRAW!"
@@ -300,6 +334,10 @@ class PygameUI:
         if self.game_over or self.game_state != "playing":
             return
 
+        # In AI vs AI mode, don't allow human moves
+        if self.game_mode == 'ai_vs_ai':
+            return
+
         if not self.state.is_human_turn:
             return
 
@@ -314,16 +352,30 @@ class PygameUI:
 
     def ai_move(self):
         """Execute AI move."""
-        if not self.state.is_human_turn and not self.game_over and self.game_state == "playing":
-            best_move = get_best_move(self.state, depth=self.ai_depth, use_alpha_beta=True)
-            if best_move:
-                pygame.time.delay(500)
-                self.state = self.state.apply_move(best_move)
-                self.update_legal_moves()
+        # In AI vs AI mode, handle both players
+        if self.game_mode == 'ai_vs_ai':
+            if not self.game_over and self.game_state == "playing":
+                best_move = get_best_move(self.state, depth=self.ai_depth, use_alpha_beta=True)
+                if best_move:
+                    pygame.time.delay(1500)  # 1.5 second delay for AI vs AI
+                    self.state = self.state.apply_move(best_move)
+                    self.update_legal_moves()
 
-                if is_terminal(self.state):
-                    self.game_state = "game_over"
-                    self.game_over = True
+                    if is_terminal(self.state):
+                        self.game_state = "game_over"
+                        self.game_over = True
+        else:
+            # Human vs AI mode - only AI's turn
+            if not self.state.is_human_turn and not self.game_over and self.game_state == "playing":
+                best_move = get_best_move(self.state, depth=self.ai_depth, use_alpha_beta=True)
+                if best_move:
+                    pygame.time.delay(500)
+                    self.state = self.state.apply_move(best_move)
+                    self.update_legal_moves()
+
+                    if is_terminal(self.state):
+                        self.game_state = "game_over"
+                        self.game_over = True
 
     def run(self):
         """Main game loop."""
@@ -342,8 +394,13 @@ class PygameUI:
                     if event.key == pygame.K_r:
                         self.initialize_game()
 
-            if not self.state.is_human_turn and not self.game_over and self.game_started:
-                self.ai_move()
+            # In AI vs AI mode, always call ai_move
+            # In Human vs AI mode, only call ai_move when it's AI's turn
+            if self.game_started:
+                if self.game_mode == 'ai_vs_ai':
+                    self.ai_move()
+                elif not self.state.is_human_turn and not self.game_over:
+                    self.ai_move()
 
             # Drawing
             self.screen.fill(WHITE)

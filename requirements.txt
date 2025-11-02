@@ -1,0 +1,10 @@
+# Treasure Duel - Python Dependencies
+
+# For GUI interface
+pygame>=2.5.0
+
+# Core Python packages (standard library, no installation needed)
+# - dataclasses (Python 3.7+)
+# - typing (Python 3.5+)
+# - random
+# - copy

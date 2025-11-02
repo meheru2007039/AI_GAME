@@ -1,4 +1,5 @@
 import random
+import time
 from .state import GameState
 from .rules import get_legal_moves, is_terminal, get_winner
 from .engine import get_best_move, clear_transposition_table
@@ -169,11 +170,16 @@ def play_game(grid_size: int = 4, num_treasures: int = 5, ai_depth: int = 4,
                 state = play_human_turn(state)
             else:  # ai_vs_ai
                 print("AI (Human side) is thinking...")
+                time.sleep(1.5)  # Add delay for AI vs AI mode
                 best_move = get_best_move(state, depth=ai_depth, use_alpha_beta=True)
                 if best_move:
                     print(f"AI (Human side) moves to: {best_move}")
+                    if best_move in state.treasures:
+                        print(f"AI (Human side) collects treasure: {state.treasures[best_move]:+d}")
                     state = state.apply_move(best_move)
         else:
+            if mode == 'ai_vs_ai':
+                time.sleep(1.5)  # Add delay for AI vs AI mode
             state = play_ai_turn(state, depth=ai_depth)
 
         print_game_state(state)

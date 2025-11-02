@@ -6,11 +6,12 @@ A turn-based strategy game showcasing AI algorithms including minimax,
 alpha-beta pruning, and fuzzy logic evaluation.
 
 Usage:
-    python main.py [--mode console|gui] [--grid-size N] [--treasures N] [--depth N]
+    python main.py [--mode console|gui] [--game-mode human_vs_ai|ai_vs_ai] [--grid-size N] [--treasures N] [--depth N]
 
 Examples:
-    python main.py                    # GUI mode with default settings
-    python main.py --mode console     # Console mode
+    python main.py                                      # GUI mode, human vs AI
+    python main.py --game-mode ai_vs_ai                 # GUI mode, AI vs AI
+    python main.py --mode console --game-mode ai_vs_ai  # Console mode, AI vs AI
     python main.py --mode gui --grid-size 5 --treasures 8 --depth 6
 """
 
@@ -27,9 +28,13 @@ def main():
         description="Treasure Duel - AI Strategy Game",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Game Modes:
+Interface Modes:
   console    Text-based interface in terminal
   gui        Graphical interface using pygame (default)
+
+Game Modes:
+  human_vs_ai    Play against the AI (default)
+  ai_vs_ai       Watch two AIs compete with delays between moves
 
 Game Rules:
   - Play on a grid where treasures are randomly placed
@@ -49,10 +54,17 @@ AI Features:
     )
     
     parser.add_argument(
-        '--mode', 
-        choices=['console', 'gui'], 
+        '--mode',
+        choices=['console', 'gui'],
         default='gui',
         help='Game interface mode (default: gui)'
+    )
+
+    parser.add_argument(
+        '--game-mode',
+        choices=['human_vs_ai', 'ai_vs_ai'],
+        default='human_vs_ai',
+        help='Game mode: human vs AI or AI vs AI (default: human_vs_ai)'
     )
     
     parser.add_argument(
@@ -107,20 +119,23 @@ AI Features:
     try:
         if args.mode == 'console':
             from game.main import play_game
-            print("Starting Treasure Duel in console mode...")
+            mode_text = "AI vs AI" if args.game_mode == 'ai_vs_ai' else "Human vs AI"
+            print(f"Starting Treasure Duel in console mode ({mode_text})...")
             play_game(
                 grid_size=args.grid_size,
                 num_treasures=args.treasures,
                 ai_depth=args.depth,
-                mode='human_vs_ai'
+                mode=args.game_mode
             )
         else:  # gui mode
             from ui.game_ui import PygameUI
-            print("Starting Treasure Duel in GUI mode...")
+            mode_text = "AI vs AI" if args.game_mode == 'ai_vs_ai' else "Human vs AI"
+            print(f"Starting Treasure Duel in GUI mode ({mode_text})...")
             ui = PygameUI(
                 grid_size=args.grid_size,
                 num_treasures=args.treasures,
-                ai_depth=args.depth
+                ai_depth=args.depth,
+                game_mode=args.game_mode
             )
             ui.run()
             
